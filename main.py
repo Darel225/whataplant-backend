@@ -15,7 +15,7 @@ from routes.chat       import router as chat_router, creer_tables_chat
 from routes.auth       import router as auth_router, creer_tables_auth
 from routes.scans      import router as scans_router
 from routes.home       import router as home_router
-from config import UPLOAD_DIR
+from config import UPLOAD_DIR, UPLOAD_DIR_ABS
 
 # ============================================================
 # INITIALISATION
@@ -40,9 +40,8 @@ app.add_middleware(
 # ============================================================
 # FICHIERS STATIQUES — pour servir les images uploadées
 # ============================================================
-# Crée le dossier uploads s'il n'existe pas
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+os.makedirs(UPLOAD_DIR_ABS, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR_ABS), name="uploads")
 
 # ============================================================
 # ROUTES

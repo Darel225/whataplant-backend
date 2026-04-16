@@ -26,8 +26,9 @@ from datetime import datetime
 from services.opencv_service   import pretraiter_depuis_bytes
 from services.plantnet_service import identifier_plante
 from services.groq_service     import analyser_plante
+from services.cloudinary_service import uploader_image_bytes
 from database                  import sauvegarder_scan, get_stats_utilisateur, get_historique
-from config                    import UPLOAD_DIR
+from config                    import UPLOAD_DIR, UPLOAD_DIR_ABS
 
 router = APIRouter()
 
@@ -48,18 +49,28 @@ def sauvegarder_image(image_bytes: bytes, user_id: int = None) -> str:
     Sauvegarde l'image originale et retourne son chemin relatif.
     N'est appelée que si score >= SEUIL_BLOQUE.
     """
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    os.makedirs(UPLOAD_DIR_ABS, exist_ok=True)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_id = str(uuid.uuid4())[:8]
     user_part = f"user_{user_id}" if user_id else "anonymous"
     filename  = f"scan_{user_part}_{timestamp}_{unique_id}.jpg"
-    filepath  = os.path.join(UPLOAD_DIR, filename)
+
+    # 1) Stockage persistant Cloudinary si configuré
+    try:
+        res = uploader_image_bytes(image_bytes, user_id=user_id, filename=filename)
+        if res and res.get("secure_url"):
+            return res["secure_url"]
+    except Exception as e:
+        print(f"      ⚠️ Cloudinary indisponible, fallback local: {e}")
+
+    # 2) Fallback local (utile en dev local)
+    filepath = os.path.join(UPLOAD_DIR_ABS, filename)
 
     with open(filepath, "wb") as f:
         f.write(image_bytes)
 
-    url_path = filepath.replace("\\", "/")
+    url_path = f"{UPLOAD_DIR}/{filename}".replace("\\", "/").lstrip("/")
     print(f"      Image sauvegardée : {url_path}")
     return url_path
 
